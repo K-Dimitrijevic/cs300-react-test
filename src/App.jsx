@@ -1,121 +1,145 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useEffect, useState } from 'react'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+const Star = ({ filled, onSelect, readOnly, label }) => (
+	<button
+		className={`star ${filled ? 'is-filled' : ''}`}
+		type="button"
+		onClick={readOnly ? undefined : onSelect}
+		aria-label={label}
+		disabled={readOnly}
+	>
+		<span aria-hidden="true">★</span>
+	</button>
+)
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+const Rating = ({
+	totalStars = 5,
+	initialRating = 0,
+	onRatingChange = () => {},
+	readOnly = false,
+	label = 'Rating',
+}) => {
+		const storageKey = `rating-${label.toLowerCase().replace(/\s+/g, '-')}`
+		const [rating, setRating] = useState(() => {
+			const storedRating = localStorage.getItem(storageKey)
+			if (storedRating !== null && !Number.isNaN(Number(storedRating))) {
+				return Number(storedRating)
+			}
+			return initialRating
+		})
+	const [customLabel, setCustomLabel] = useState(label)
 
-      <div className="ticks"></div>
+	useEffect(() => {
+		localStorage.setItem(storageKey, String(rating))
+	}, [rating, storageKey])
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+	const handleSelect = (value) => {
+		if (readOnly) return
+		setRating(value)
+		onRatingChange(value)
+	}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+	const displayLabel = customLabel.trim() || label
+
+	return (
+		<div className={`rating ${readOnly ? 'is-read-only' : ''}`}>
+			<div className="rating__header">
+				<span className="rating__label">{displayLabel}</span>
+				<span className="rating__value">
+					{rating}/{totalStars}
+				</span>
+			</div>
+			<div className="rating__stars" role="radiogroup" aria-label={displayLabel}>
+				{Array.from({ length: totalStars }, (_, index) => {
+					const value = index + 1
+					return (
+						<Star
+							key={value}
+							filled={value <= rating}
+							onSelect={() => handleSelect(value)}
+							readOnly={readOnly}
+							label={`${value} ${value === 1 ? 'star' : 'stars'}`}
+						/>
+					)
+				})}
+			</div>
+			<div className="rating__controls">
+				<label className="rating__input">
+					Custom label
+					<input
+						type="text"
+						value={customLabel}
+						onChange={(event) => setCustomLabel(event.target.value)}
+						disabled={readOnly}
+						placeholder="Add a label"
+					/>
+				</label>
+				<button
+					className="rating__reset"
+					type="button"
+					onClick={() => handleSelect(0)}
+					disabled={readOnly}
+				>
+					Clear
+				</button>
+			</div>
+		</div>
+	)
+}
+
+const DemoCard = ({ title, description, children }) => (
+	<section className="demo-card">
+		<header>
+			<h2>{title}</h2>
+			<p>{description}</p>
+		</header>
+		<div className="demo-card__content">{children}</div>
+	</section>
+)
+
+const App = () => {
+	const [productRating, setProductRating] = useState(3)
+
+	return (
+		<div className="app">
+			<header className="page-header">
+				<h1>Rating Component</h1>
+				<p>
+					Compare two rating setups: a fully interactive product score and a
+					read-only critic rating.
+				</p>
+			</header>
+
+			<div className="demo-grid">
+				<DemoCard
+					title="Interactive product rating"
+					description="Click the stars or update the label to save your pick in localStorage."
+				>
+					<Rating
+						totalStars={5}
+						initialRating={productRating}
+						label="Product score"
+						onRatingChange={setProductRating}
+					/>
+					<p className="demo-note">Last saved rating: {productRating}</p>
+				</DemoCard>
+
+				<DemoCard
+					title="Read-only critic rating"
+					description="This configuration shows a 10-star scale with input disabled."
+				>
+					<Rating
+						totalStars={10}
+						initialRating={8}
+						label="Critic score"
+						readOnly
+					/>
+					<p className="demo-note">Critic ratings stay fixed for visitors.</p>
+				</DemoCard>
+			</div>
+		</div>
+	)
 }
 
 export default App
