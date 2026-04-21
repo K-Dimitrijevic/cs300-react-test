@@ -19,20 +19,42 @@ const Rating = ({
 	onRatingChange = () => {},
 	readOnly = false,
 	label = 'Rating',
+	persist = true,
+	storageKey,
 }) => {
-		const storageKey = `rating-${label.toLowerCase().replace(/\s+/g, '-')}`
-		const [rating, setRating] = useState(() => {
-			const storedRating = localStorage.getItem(storageKey)
+	const [baseLabel] = useState(label)
+	const [baseInitialRating] = useState(initialRating)
+	const resolvedStorageKey =
+		storageKey ?? `rating-${baseLabel.toLowerCase().replace(/\s+/g, '-')}`
+	const labelStorageKey = `${resolvedStorageKey}-label`
+	const [rating, setRating] = useState(() => {
+		if (persist) {
+			const storedRating = localStorage.getItem(resolvedStorageKey)
 			if (storedRating !== null && !Number.isNaN(Number(storedRating))) {
 				return Number(storedRating)
 			}
-			return initialRating
-		})
-	const [customLabel, setCustomLabel] = useState(label)
+		}
+		return baseInitialRating
+	})
+	const [customLabel, setCustomLabel] = useState(() => {
+		if (persist) {
+			const storedLabel = localStorage.getItem(labelStorageKey)
+			if (storedLabel !== null) {
+				return storedLabel
+			}
+		}
+		return label
+	})
 
 	useEffect(() => {
-		localStorage.setItem(storageKey, String(rating))
-	}, [rating, storageKey])
+		if (!persist) return
+		localStorage.setItem(resolvedStorageKey, String(rating))
+	}, [persist, rating, resolvedStorageKey])
+
+	useEffect(() => {
+		if (!persist) return
+		localStorage.setItem(labelStorageKey, customLabel)
+	}, [customLabel, labelStorageKey, persist])
 
 	const handleSelect = (value) => {
 		if (readOnly) return
@@ -99,7 +121,27 @@ const DemoCard = ({ title, description, children }) => (
 )
 
 const App = () => {
-	const [productRating, setProductRating] = useState(3)
+	const productStorageKey = 'rating-product-score'
+	const [productRating, setProductRating] = useState(() => {
+		const storedRating = localStorage.getItem(productStorageKey)
+		if (storedRating !== null && !Number.isNaN(Number(storedRating))) {
+			return Number(storedRating)
+		}
+		return 3
+	})
+	const [criticRating, setCriticRating] = useState(4)
+	const [criticLocked, setCriticLocked] = useState(false)
+	const [criticDefaultRating] = useState(4)
+
+	const handleSaveCriticRating = () => {
+		setCriticRating(productRating)
+		setCriticLocked(true)
+	}
+
+	const handleResetCriticRating = () => {
+		setCriticRating(criticDefaultRating)
+		setCriticLocked(false)
+	}
 
 	return (
 		<div className="app">
@@ -127,15 +169,39 @@ const App = () => {
 
 				<DemoCard
 					title="Read-only critic rating"
-					description="This configuration shows a 10-star scale with input disabled."
+					description="Save the product rating here, then it locks as the critic score."
 				>
+					<div className="demo-actions">
+						<button
+							className="rating__reset"
+							type="button"
+							onClick={handleSaveCriticRating}
+							disabled={criticLocked}
+						>
+							Save as critic rating
+						</button>
+						<button
+							className="rating__reset"
+							type="button"
+							onClick={handleResetCriticRating}
+							disabled={!criticLocked}
+						>
+							Reset critic rating
+						</button>
+					</div>
 					<Rating
-						totalStars={10}
-						initialRating={8}
+						key={`critic-${criticRating}-${criticLocked}`}
+						totalStars={5}
+						initialRating={criticRating}
 						label="Critic score"
-						readOnly
+						readOnly={criticLocked}
+						persist={false}
 					/>
-					<p className="demo-note">Critic ratings stay fixed for visitors.</p>
+					<p className="demo-note">
+						{criticLocked
+							? 'Critic ratings are locked after saving.'
+							: 'Save the product rating to lock it in as the critic score.'}
+					</p>
 				</DemoCard>
 			</div>
 		</div>
